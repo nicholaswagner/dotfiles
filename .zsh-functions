@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+
+# Xcode command line tools ----------------------------------
+xcode_gen() {
+  if [ ! -f "project.yml" ]; then
+    echo "❌ No project.yml found in current directory"
+    return 1
+  fi
+  xcodegen generate
+}
+
+xcode_build() {
+  local proj
+  local scheme
+  local build_dir
+  proj=$(find . -maxdepth 1 -name "*.xcodeproj" | head -1)
+  if [ -z "$proj" ]; then
+    echo "❌ No .xcodeproj found in current directory"
+    return 1
+  fi
+  scheme=$(basename "$proj" .xcodeproj)
+  build_dir="$(pwd)/.build"
+  xcodebuild -project "$proj" \
+             -scheme "$scheme" \
+             -destination "platform=iOS,name=$IPHONE_NAME" \
+             -configuration Debug \
+             -derivedDataPath "$build_dir" \
+             build
+}
+
+xcode_run() {
+  local proj
+  local scheme
+  local build_dir
+  local app
+  local device_id
+  local bundle_id
+  proj=$(find . -maxdepth 1 -name "*.xcodeproj" | head -1)
+  if [ -z "$proj" ]; then
+    echo "❌ No .xcodeproj found in current directory"
+    return 1
+  fi
+  scheme=$(basename "$proj" .xcodeproj)
+  build_dir="$(pwd)/.build"
+
+  echo "🔨 Building $scheme..."
+  xcodebuild -project "$proj" \
+             -scheme "$scheme" \
+             -destination "platform=iOS,name=$IPHONE_NAME" \
+             -configuration Debug \
+             -derivedDataPath "$build_dir" \
+             build || return 1
+
+  app=$(find "$build_dir" -name "*.app" ! -path "*.xctest*" | head -1)
+  if [ -z "$app" ]; then
+    echo "❌ Could not find built .app"
+    return 1
+  fi
+
+  device_id=$(xcrun devicectl list devices | grep "$IPHONE_NAME" \
+    | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
+  if [ -z "$device_id" ]; then
+    echo "❌ Device '$IPHONE_NAME' not found or not connected"
+    return 1
+  fi
+
+  bundle_id=$(defaults read "$app/Info.plist" CFBundleIdentifier)
+
+  echo "📲 Installing on $IPHONE_NAME..."
+  xcrun devicectl device install app --device "$device_id" "$app" || return 1
+
+  echo "🚀 Launching $bundle_id..."
+  xcrun devicectl device process launch --device "$device_id" "$bundle_id"
+}
+
+
+# .git/safe ----------------------------------
+# Gitsafe strategy for executing scripts located in repo/bin directories https://thoughtbot.com/blog/git-safe
+add_git_safe_path() {
+  local dir
+  local candidate
+  dir="$PWD"
+
+  while [ "$dir" != "/" ]; do
+    candidate="$dir/.git/safe/../../bin"
+
+    if [ -d "$candidate" ]; then
+      case ":$PATH:" in
+        *":$candidate:"*) ;;
+        *) export PATH="$candidate:$PATH" ;;
+      esac
+      return
+    fi
+
+    dir=$(dirname "$dir")
+  done
+}
+
+# LM Studio Aliases -------------------------------------
+
+# Loads a model based on the profile name (fast, balanced, quality) defined in the LM_CONFIG JSON file
+# defaults to "fast" profile if no argument is provided
+lms_load() {
+  local profile
+  local id
+  local ctx
+  local ttl
+  profile="${1:-fast}"
+  id=$(jq -r '.[0] | keys[0]' "$LM_CONFIG")
+  ctx=$(jq -r ".[0][keys[0]].${profile}.context_length" "$LM_CONFIG")
+  ttl=$(( profile == "quality" ? 3600 : profile == "balanced" ? 1800 : 900 ))
+  lms load "$id" --gpu max -c "$ctx" --identifier "lm-${profile}" --ttl "$ttl" -y
+}
+
+
+# Display Banner ----------------------------------
+display_banner() {
+  clear
+  local file="${DOTFILES}/assets/me.ans"
+  local bg=$'\e[48;2;192;202;245m'  # matches first row of me.ans
+  local reset=$'\e[0m'
+
+  while IFS= read -r line; do
+    # Strip ANSI codes to measure visible length
+    local visible=$(printf "%s" "$line" | sed 's/\x1b\[[0-9;]*[mGKHF]//g')
+    local pad=$(( COLUMNS - ${#visible} ))
+    (( pad < 0 )) && pad=0
+    printf "%s%s%${pad}s%s\n" "$line" "$bg" "" "$reset"
+  done < "$file"
+}
+
+
+

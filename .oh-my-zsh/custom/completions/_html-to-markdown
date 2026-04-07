@@ -1,0 +1,105 @@
+#compdef html-to-markdown
+
+autoload -U is-at-least
+
+_html-to-markdown() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'()--url=[Fetch HTML from a URL (alternative to file/stdin)]:URL:_default' \
+'--user-agent=[User-Agent header when fetching via --url (default mimics a real browser)]:UA:_default' \
+'-o+[Output file (default\: stdout)]:FILE:_files' \
+'--output=[Output file (default\: stdout)]:FILE:_files' \
+'--generate-completion=[Generate shell completion script]:SHELL:(bash zsh fish power-shell elvish)' \
+'--heading-style=[Heading style]:STYLE:((atx\:"ATX style\: # for h1, ## for h2 (default)"
+underlined\:"Underlined\: === for h1, --- for h2"
+atx-closed\:"ATX closed\: # Title #"))' \
+'--list-indent-type=[List indentation type]:TYPE:((spaces\:"Use spaces for indentation"
+tabs\:"Use tabs for indentation"))' \
+'--list-indent-width=[Spaces per list indent level]:N:_default' \
+'-b+[Bullet characters for unordered lists]:CHARS:_default' \
+'--bullets=[Bullet characters for unordered lists]:CHARS:_default' \
+'--strong-em-symbol=[Symbol for bold and italic]:CHAR:_default' \
+'--sub-symbol=[Symbol to wrap subscript text]:SYMBOL:_default' \
+'--sup-symbol=[Symbol to wrap superscript text]:SYMBOL:_default' \
+'--newline-style=[Line break style]:STYLE:((spaces\:"Two spaces at end of line"
+backslash\:"Backslash at end of line (default)"))' \
+'--code-block-style=[Code block style]:STYLE:((indented\:"Indented code blocks\: 4 spaces (default)"
+backticks\:"Fenced code blocks\: \`\`\`"
+tildes\:"Fenced code blocks\: ~~~"))' \
+'-l+[Default language for code blocks]:LANG:_default' \
+'--code-language=[Default language for code blocks]:LANG:_default' \
+'*--keep-inline-images-in=[Keep inline images in specific elements]:ELEMENTS:_default' \
+'--highlight-style=[Style for <mark> elements]:STYLE:((double-equal\:"==text== (default)"
+html\:"<mark>text</mark>"
+bold\:"**text**"
+none\:"Plain text"))' \
+'--whitespace-mode=[Whitespace handling mode]:MODE:((normalized\:"Normalize whitespace (default)"
+strict\:"Preserve whitespace as-is"))' \
+'--wrap-width=[Wrap width in columns]:N:_default' \
+'*--strip-tags=[HTML tags to strip]:TAGS:_default' \
+'--preset=[Preprocessing aggressiveness preset]:LEVEL:((minimal\:"Basic cleanup"
+standard\:"Balanced cleaning (default)"
+aggressive\:"Maximum cleaning"))' \
+'-e+[Input character encoding]:ENCODING:_default' \
+'--encoding=[Input character encoding]:ENCODING:_default' \
+'-f+[Output format (markdown or djot)]:FORMAT:((markdown\:"Standard Markdown (CommonMark compatible)"
+djot\:"Djot lightweight markup language"
+plain\:"Plain text (no markup)"))' \
+'--output-format=[Output format (markdown or djot)]:FORMAT:((markdown\:"Standard Markdown (CommonMark compatible)"
+djot\:"Djot lightweight markup language"
+plain\:"Plain text (no markup)"))' \
+'--generate-man[Generate man page]' \
+'--escape-asterisks[Escape asterisk (*) characters]' \
+'--escape-underscores[Escape underscore (_) characters]' \
+'--escape-misc[Escape misc Markdown characters]' \
+'--escape-ascii[Escape all ASCII punctuation]' \
+'-a[Convert URLs to autolinks]' \
+'--autolinks[Convert URLs to autolinks]' \
+'--default-title[Add default title to links]' \
+'--br-in-tables[Use <br> in table cells]' \
+'--no-hocr-spatial-tables[\[DEPRECATED\] Disable spatial table reconstruction for hOCR documents. hOCR will be removed in v3]' \
+'--extract-metadata[Extract metadata from HTML]' \
+'--with-metadata[Extract comprehensive metadata and output as JSON]' \
+'--extract-document[Extract document-level metadata]' \
+'--extract-headers[Extract header elements]' \
+'--extract-links[Extract link elements]' \
+'--extract-images[Extract image elements]' \
+'--extract-structured-data[Extract structured data]' \
+'--strip-newlines[Strip newlines from input]' \
+'-w[Enable text wrapping]' \
+'--wrap[Enable text wrapping]' \
+'--convert-as-inline[Treat block elements as inline]' \
+'-p[Enable HTML preprocessing]' \
+'--preprocess[Enable HTML preprocessing]' \
+'--keep-navigation[Keep navigation elements]' \
+'--keep-forms[Keep form elements]' \
+'--debug[Enable debug mode]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::input -- Input HTML file (use \"-\" or omit for stdin):_default' \
+&& ret=0
+}
+
+(( $+functions[_html-to-markdown_commands] )) ||
+_html-to-markdown_commands() {
+    local commands; commands=()
+    _describe -t commands 'html-to-markdown commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_html-to-markdown" ]; then
+    _html-to-markdown "$@"
+else
+    compdef _html-to-markdown html-to-markdown
+fi

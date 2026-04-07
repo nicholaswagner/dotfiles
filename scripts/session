@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Starts a named tmux session with the banner pinned to the top.
+# Usage: session [session-name]
+
+SESSION="${1:-main}"
+
+# If session already exists, just attach
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  tmux attach-session -t "$SESSION"
+  exit 0
+fi
+
+DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BANNER_HEIGHT=15
+
+# Start session with the working pane
+tmux new-session -d -s "$SESSION" -x "$(tput cols)" -y "$(tput lines)"
+
+# Split off the top pane, running the banner directly as a command (no shell prompt)
+tmux split-window -v -t "$SESSION:1.1" -l "$BANNER_HEIGHT" -b \
+  "zsh -c 'source \"${DOTFILES}/.zshenv\"; source \"${DOTFILES}/.zsh-functions\"; tput civis; display_banner; _cols=\$COLUMNS; while true; do sleep 0.2; if [[ \$COLUMNS -ne \$_cols ]]; then _cols=\$COLUMNS; tmux resize-pane -t \$TMUX_PANE -y ${BANNER_HEIGHT}; clear; display_banner; fi; done'"
+
+# Focus the working pane
+tmux select-pane -t "$SESSION:1.2"
+
+# Attach
+tmux attach-session -t "$SESSION"

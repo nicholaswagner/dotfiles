@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -e
+
+# This script bootstraps a new Mac's shell environment with:
+# - Oh My Zsh
+# - Homebrew and dependencies from Brewfile
+# - Node Version Manager (nvm) and latest Node
+# - Bun JavaScript runtime
+# - Symlinks zsh config files from the dotfiles repo to the home directory
+
+DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "[setup] Starting setup with DOTFILES=${DOTFILES}"
+
+# shellcheck source=/dev/null
+source "${DOTFILES}/.zshenv"
+
+# Initialize git submodules
+echo "[git] Initializing submodules..."
+git -C "${DOTFILES}" submodule update --init --recursive
+
+# https://ohmyz.sh/#install
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+	echo "[oh-my-zsh] Installing..."
+	CHSH=yes RUNZSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+fi
+
+# Symlink zsh config files from the dotfiles repo to the home directory.
+ZSH_FILES=(".zshenv" ".zprofile" ".zshrc")
+
+for file in "${ZSH_FILES[@]}"; do
+	target="$HOME/$file"
+	if [ -f "$target" ] && [ ! -L "$target" ]; then
+		echo "[backup] Backing up ${file} to ${file}.bak"
+		mv "$target" "${target}.bak"
+	fi
+	ln -sf "${DOTFILES}/$file" "$target"
+	echo "[symlink] Linked ${DOTFILES}/$file to $target"
+done
+
+# if the .oh-my-zsh/custom directory already exists, back it up before symlinking
+if [ -d "${ZSH}/custom" ] && [ ! -L "${ZSH}/custom" ]; then
+	echo "[backup] Backing up existing ${ZSH}/custom to ${ZSH}/custom.bak"
+	mv "${ZSH}/custom" "${ZSH}/custom.bak"
+fi
+
+# Symlink the custom directory to the dotfiles repo's oh-my-zsh custom directory so we can keep that under version control
+ln -sf "${DOTFILES}/.oh-my-zsh/custom" "${ZSH}/custom"
+echo "[symlink] Linked ${DOTFILES}/.oh-my-zsh/custom to ${ZSH}/custom"
+
+# if no .hushlogin file exists, create one to suppress the "Last login..." message from the terminal
+if [ ! -f "$HOME/.hushlogin" ]; then
+	touch "$HOME/.hushlogin"
+	echo "[hushlogin] Created .hushlogin to suppress last login message"
+fi
+
+# https://brew.sh/
+if ! command -v brew &> /dev/null; then
+	echo "[brew] Installing Homebrew..."
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+# Make brew available in the current session (installer only updates shell config files)
+eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || eval "$(/usr/local/bin/brew shellenv)"
+
+echo "[brew] Updating and installing dependencies from Brewfile..."
+brew update
+brew bundle --file="${DOTFILES}/Brewfile"
+
+# Install huggingface-hub via uv
+echo "[uv] Installing huggingface-hub..."
+uv tool install "huggingface-hub[hf-xet]"
+
+# Node Version Manager
+# https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating
+if [ ! -d "$HOME/.nvm" ]; then
+	echo "[nvm] Installing Node Version Manager..."
+	echo "[nvm] [Warning] - This uses a hardcoded version [v0.40.4].  Make sure this is up to date with the latest version from https://github.com/nvm-sh/nvm/releases"
+	PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash'
+fi
+
+# Load nvm and install latest Node
+export NVM_DIR="${HOME}/.nvm"
+# shellcheck source=/dev/null
+[ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"
+nvm install node # "node" is an alias for the latest version
+
+# Install bun via npm (bun also has its own installer, but this is simpler to automate in a script)
+npm install -g bun
+
+# Symlink .tmux.conf
+if [ -f "$HOME/.tmux.conf" ] && [ ! -L "$HOME/.tmux.conf" ]; then
+	echo "[backup] Backing up existing .tmux.conf to .tmux.conf.bak"
+	mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.bak"
+fi
+ln -sf "${DOTFILES}/config/tmux.conf" "$HOME/.tmux.conf"
+echo "[symlink] Linked ${DOTFILES}/config/tmux.conf to $HOME/.tmux.conf"
+
+# Symlink .gitconfig
+if [ -f "$HOME/.gitconfig" ] && [ ! -L "$HOME/.gitconfig" ]; then
+	echo "[backup] Backing up existing .gitconfig to .gitconfig.bak"
+	mv "$HOME/.gitconfig" "$HOME/.gitconfig.bak"
+fi
+ln -sf "${DOTFILES}/gitconfig" "$HOME/.gitconfig"
+echo "[symlink] Linked ${DOTFILES}/gitconfig to $HOME/.gitconfig"
+
+# Reminder to store the LM Studio API key in the Keychain if it doesn't already exist
+if [ -z "$(security find-generic-password -a "$USER" -s "LM_STUDIO_API_KEY" -w 2>/dev/null)" ]; then
+	echo ""
+	echo "[keychain] ⚠️  LM Studio API key not found in Keychain."
+	echo "[keychain] Store it with:"
+	echo "[keychain]   security add-generic-password -a \"\$USER\" -s \"LM_STUDIO_API_KEY\" -w \"your-api-key\" -T /usr/bin/security"
+fi
+
+echo ""
+echo "[done] Setup complete!"

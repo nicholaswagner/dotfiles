@@ -1,0 +1,11 @@
+[user]
+	name = Nicholas Wagner
+	email = hello@nicholaswagner.dev
+[credential]
+	helper = osxkeychain
+[github]
+	user = nicholaswagner
+[pull]
+	rebase = true
+[init]
+	defaultBranch = main

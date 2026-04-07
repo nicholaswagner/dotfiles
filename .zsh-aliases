@@ -1,0 +1,21 @@
+#!/bin/env sh
+
+# LM Studio Aliases -------------------------------------
+alias lms-fast="lms load \${LM_ID} --gpu max -c 8192 --identifier lm-fast"
+alias lms-balanced="lms load \${LM_ID} --gpu max -c 32768 --identifier lm-balanced"
+alias lms-quality="lms load \${LM_ID} --gpu max -c 65536 --identifier lm-quality"
+
+# Claude Code
+alias cc="claude"
+
+# CLI Tools -------------------------------------
+alias readme="glow README.md"
+alias source-maps="node \${DOTFILES}/submodules/source-maps-downloader/index.js"
+
+# https://docs.html-to-markdown.kreuzberg.dev/guides/basic-conversion/
+alias html-to-md="html2md"
+
+# Submodule Aliases -------------------------------------
+alias dotfiles="cd \${DOTFILES}"
+alias repos="cd ~/repos"
+

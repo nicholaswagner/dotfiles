@@ -1,0 +1,25 @@
+
+# Taps
+tap "kreuzberg-dev/tap"
+tap "matheusml/zsh-ai"
+tap "openhue/cli"
+
+# Formulas
+brew "awscli"
+brew "ffmpeg"
+brew "gh"
+brew "glow"
+brew "hf"
+brew "jq"
+brew "kreuzberg-dev/tap/html-to-markdown"
+brew "matheusml/zsh-ai/zsh-ai"
+brew "mdcat"
+brew "openhue/cli/openhue-cli"
+brew "rust" 
+brew "tmux"
+brew "tree"
+brew "uv"
+brew "webp"
+brew "wget"
+brew "yt-dlp"
+cask "ghostty"
