@@ -1,12 +1,14 @@
-# dotfiles
+# ~/dotfiles
 
-These are my personal dotfiles.
+![A screenshot of a terminal with a custom theme](assets/screenshot.png)
+
+A collection of dotfiles and helper scripts I use day-to-day on my MacBook Pro. Version-controlled so I can spin up a new machine quickly, keep changes tracked, and stop reconfiguring things I've already figured out. 
 
 
 ## Requirements
 
 - macOS (Apple Silicon)
-- Git (available by default on macOS via Xcode Command Line Tools)
+- git (available by default on macOS via Xcode Command Line Tools)
 
 ## What it sets up
 

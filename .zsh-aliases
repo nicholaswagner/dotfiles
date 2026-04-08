@@ -8,14 +8,18 @@ alias lms-quality="lms load \${LM_ID} --gpu max -c 65536 --identifier lm-quality
 # Claude Code
 alias cc="claude"
 
-# CLI Tools -------------------------------------
-alias readme="glow README.md"
-alias source-maps="node \${DOTFILES}/submodules/source-maps-downloader/index.js"
+# Git Aliases -------------------------------------
+alias git-log="git log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)' --all"
 
+# CLI Tools -------------------------------------
+alias readme="glow ./README.md"
 # https://docs.html-to-markdown.kreuzberg.dev/guides/basic-conversion/
 alias html-to-md="html2md"
+alias source-maps="node \${DOTFILES}/submodules/source-maps-downloader/index.js"
 
-# Submodule Aliases -------------------------------------
+# Navigation -------------------------------------
 alias dotfiles="cd \${DOTFILES}"
 alias repos="cd ~/repos"
+alias nw="cd ~/repos/dev.nicholaswagner"
+alias vault='\${HOME}/Library/Mobile\ Documents/iCloud~md~obsidian/Documents'
 

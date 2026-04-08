@@ -9,3 +9,10 @@
 	rebase = true
 [init]
 	defaultBranch = main
+[color "status"]
+	added = "#65f0ad"
+	changed = "#ff6767"
+	untracked = "#ff9e64"
+[color "diff"]
+	new = "#65f0ad"
+	old = "#ff6767"

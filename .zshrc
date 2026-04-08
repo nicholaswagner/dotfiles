@@ -2,7 +2,8 @@
 # Path to your Oh My Zsh installation.
 export ZSH="${HOME}/.oh-my-zsh"
 
-ZSH_THEME="tokyo-sandwich"
+ZSH_THEME="tau-ceti"
+# ZSH_THEME="tokyo-sandwich"
 
 plugins=(git tmux zsh-ai nvm bun)
 
