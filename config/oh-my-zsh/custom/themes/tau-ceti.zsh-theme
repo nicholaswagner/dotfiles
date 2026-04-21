@@ -25,6 +25,25 @@ TauCeti[orange]="#ff9e64"
 SEGMENT_SEPARATOR=$'\ue0b0' # 
 BRANCH_ICON=$'\ue0a0' # 
 
+# --- ANSI escape codes for text styles ---
+BEGIN_ITALICS=$'\e[3m'
+END_ITALICS=$'\e[23m'
+BEGIN_BOLD=$'\e[1m'
+END_BOLD=$'\e[22m'
+BEGIN_DIM=$'\e[2m'
+END_DIM=$'\e[22m'
+BEGIN_UNDERLINE=$'\e[4m'
+END_UNDERLINE=$'\e[24m'
+BEGIN_REVERSE=$'\e[7m'
+END_REVERSE=$'\e[27m'
+BEGIN_STRIKETHROUGH=$'\e[9m'
+END_STRIKETHROUGH=$'\e[29m'
+BEGIN_INVISIBLE=$'\e[8m'
+END_INVISIBLE=$'\e[28m'
+BEGIN_RESET=$'\e[0m'
+
+
+
 
 # --- Segment builder ---
 prompt_segment() {
@@ -38,12 +57,14 @@ prompt_end() {
 
 # --- Segments ---
 
-# user
+prompt_username() {
+  $BEGIN_BOLD $BEGIN_ITALICS $USER $END_ITALICS $END_BOLD
+}
+
 prompt_context() {
-  # if [[ "$USERNAME" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
-    # prompt_segment "$TauCeti[acid]" "$TauCeti[black]" "%n@%m"
-    prompt_segment "$TauCeti[acid]" "$TauCeti[black]" "%B$(echo -e '\e[3m')${(U)USER}$(echo -e '\e[23m')%b"
-  # fi
+  if [[ "$USERNAME" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
+    prompt_segment "$TauCeti[acid]" "$TauCeti[black]" $prompt_username "%n@%m"
+  fi
 }
 
 # current working directory
@@ -88,33 +109,33 @@ prompt_dir() {
 #   prompt_segment "$bgColor" "$color" "$label"
 # }
 # git (clean + minimal)
-prompt_git() {
-  local ref dirty
+# prompt_git() {
+#   local ref dirty
 
-  ref=$(git symbolic-ref --short HEAD 2>/dev/null) || return
-  dirty=$(git status --porcelain 2>/dev/null)
+#   ref=$(git symbolic-ref --short HEAD 2>/dev/null) || return
+#   dirty=$(git status --porcelain 2>/dev/null)
 
-  if [[ -n $dirty ]]; then
-    prompt_segment "$TauCeti[red]" "$TauCeti[bg]" " $ref "
-  else
-    prompt_segment "$TauCeti[green]" "$TauCeti[bg]" " $ref "
-  fi
-  print -n "%{%k%f%} "
-}
+#   if [[ -n $dirty ]]; then
+#     prompt_segment "$TauCeti[red]" "$TauCeti[bg]" " $ref "
+#   else
+#     prompt_segment "$TauCeti[green]" "$TauCeti[bg]" " $ref "
+#   fi
+#   print -n "%{%k%f%} "
+# }
 
 # node version — only shown when .nvmrc or package.json is found in tree
-prompt_node() {
-  local search_dir="$PWD"
-  while [[ "$search_dir" != "/" ]]; do
-    if [[ -f "$search_dir/package.json" || -f "$search_dir/.nvmrc" ]]; then
-      local ver
-      ver=$(node --version 2>/dev/null) || return
-      prompt_segment "$TauCeti[bg_alt]" "$TauCeti[fg]" "⬡ $ver"
-      return
-    fi
-    search_dir="${search_dir:h}"
-  done
-}
+# prompt_node() {
+#   local search_dir="$PWD"
+#   while [[ "$search_dir" != "/" ]]; do
+#     if [[ -f "$search_dir/package.json" || -f "$search_dir/.nvmrc" ]]; then
+#       local ver
+#       ver=$(node --version 2>/dev/null) || return
+#       prompt_segment "$TauCeti[bg_alt]" "$TauCeti[fg]" "⬡ $ver"
+#       return
+#     fi
+#     search_dir="${search_dir:h}"
+#   done
+# }
 
 # exit status — only shown on non-zero
 prompt_status() {
@@ -129,7 +150,7 @@ prompt_status() {
 build_prompt() {
   RETVAL=$?
 
-  # prompt_context
+  prompt_context
   prompt_dir
   # prompt_git
   # prompt_node

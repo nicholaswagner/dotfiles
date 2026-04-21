@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# This script bootstraps a new Mac's shell environment with:
+# This script bootstraps a new Mac (in theory, i haven't _actually_ tested it yet. YMMV)
 # - Oh My Zsh
 # - Homebrew and dependencies from Brewfile
 # - Node Version Manager (nvm) and latest Node
@@ -16,7 +16,19 @@ source "${DOTFILES}/.zshenv"
 
 # Initialize git submodules
 echo "[git] Initializing submodules..."
-git -C "${DOTFILES}" submodule update --init --recursive
+
+# downloads source-maps when websites include them, which is super helpful for debugging in the browser
+echo "[git] Initializing source-maps-downloader submodule..."
+git -C "${DOTFILES}" submodule update --init submodules/source-maps-downloader
+
+echo "[git] Configuring nerd-fonts sparse checkout..."
+git -C "${DOTFILES}" submodule update --init submodules/nerd-fonts
+git -C "${DOTFILES}/submodules/nerd-fonts" sparse-checkout set \
+  font-patcher \
+  src/glyphs \
+  bin/scripts/name_parser \
+  bin/scripts/braille
+git -C "${DOTFILES}" submodule update submodules/nerd-fonts
 
 # https://ohmyz.sh/#install
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
@@ -25,16 +37,17 @@ if [ ! -d "$HOME/.oh-my-zsh" ]; then
 fi
 
 # Symlink zsh config files from the dotfiles repo to the home directory.
-ZSH_FILES=(".zshenv" ".zprofile" ".zshrc")
+# Source files have no leading dot; symlink targets in $HOME do.
+ZSH_FILES=("zshenv" "zprofile" "zshrc")
 
 for file in "${ZSH_FILES[@]}"; do
-	target="$HOME/$file"
+	target="$HOME/.$file"
 	if [ -f "$target" ] && [ ! -L "$target" ]; then
-		echo "[backup] Backing up ${file} to ${file}.bak"
+		echo "[backup] Backing up .${file} to .${file}.bak"
 		mv "$target" "${target}.bak"
 	fi
-	ln -sf "${DOTFILES}/$file" "$target"
-	echo "[symlink] Linked ${DOTFILES}/$file to $target"
+	ln -sf "${DOTFILES}/config/zsh/$file" "$target"
+	echo "[symlink] Linked ${DOTFILES}/config/zsh/$file to $target"
 done
 
 # if the .oh-my-zsh/custom directory already exists, back it up before symlinking
@@ -44,8 +57,8 @@ if [ -d "${ZSH}/custom" ] && [ ! -L "${ZSH}/custom" ]; then
 fi
 
 # Symlink the custom directory to the dotfiles repo's oh-my-zsh custom directory so we can keep that under version control
-ln -sf "${DOTFILES}/.oh-my-zsh/custom" "${ZSH}/custom"
-echo "[symlink] Linked ${DOTFILES}/.oh-my-zsh/custom to ${ZSH}/custom"
+ln -sf "${DOTFILES}/config/oh-my-zsh/custom" "${ZSH}/custom"
+echo "[symlink] Linked ${DOTFILES}/config/oh-my-zsh/custom to ${ZSH}/custom"
 
 # if no .hushlogin file exists, create one to suppress the "Last login..." message from the terminal
 if [ ! -f "$HOME/.hushlogin" ]; then
@@ -92,16 +105,51 @@ if [ -f "$HOME/.tmux.conf" ] && [ ! -L "$HOME/.tmux.conf" ]; then
 	echo "[backup] Backing up existing .tmux.conf to .tmux.conf.bak"
 	mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.bak"
 fi
-ln -sf "${DOTFILES}/config/tmux.conf" "$HOME/.tmux.conf"
-echo "[symlink] Linked ${DOTFILES}/config/tmux.conf to $HOME/.tmux.conf"
+ln -sf "${DOTFILES}/config/tmux/tmux.conf" "$HOME/.tmux.conf"
+echo "[symlink] Linked ${DOTFILES}/config/tmux/tmux.conf to $HOME/.tmux.conf"
+
+# Symlink ghostty config
+mkdir -p "$HOME/.config/ghostty"
+if [ -f "$HOME/.config/ghostty/config" ] && [ ! -L "$HOME/.config/ghostty/config" ]; then
+	echo "[backup] Backing up existing ghostty config"
+	mv "$HOME/.config/ghostty/config" "$HOME/.config/ghostty/config.bak"
+fi
+ln -sf "${DOTFILES}/config/ghostty/ghostty.conf" "$HOME/.config/ghostty/config"
+echo "[symlink] Linked ${DOTFILES}/config/ghostty/ghostty.conf to $HOME/.config/ghostty/config"
+ln -sf "${DOTFILES}/config/ghostty/tokyo-night" "$HOME/.config/ghostty/tokyo-night"
+echo "[symlink] Linked ${DOTFILES}/config/ghostty/tokyo-night to $HOME/.config/ghostty/tokyo-night"
+ln -sf "${DOTFILES}/config/ghostty/active-theme" "$HOME/.config/ghostty/active-theme"
+echo "[symlink] Linked ${DOTFILES}/config/ghostty/active-theme to $HOME/.config/ghostty/active-theme"
 
 # Symlink .gitconfig
 if [ -f "$HOME/.gitconfig" ] && [ ! -L "$HOME/.gitconfig" ]; then
 	echo "[backup] Backing up existing .gitconfig to .gitconfig.bak"
 	mv "$HOME/.gitconfig" "$HOME/.gitconfig.bak"
 fi
-ln -sf "${DOTFILES}/gitconfig" "$HOME/.gitconfig"
-echo "[symlink] Linked ${DOTFILES}/gitconfig to $HOME/.gitconfig"
+ln -sf "${DOTFILES}/config/gitconfig" "$HOME/.gitconfig"
+echo "[symlink] Linked ${DOTFILES}/config/gitconfig to $HOME/.gitconfig"
+
+# Symlink neovim config
+mkdir -p "$HOME/.config/nvim/colors"
+if [ -f "$HOME/.config/nvim/init.lua" ] && [ ! -L "$HOME/.config/nvim/init.lua" ]; then
+	echo "[backup] Backing up existing nvim init.lua"
+	mv "$HOME/.config/nvim/init.lua" "$HOME/.config/nvim/init.lua.bak"
+fi
+ln -sf "${DOTFILES}/config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
+echo "[symlink] Linked ${DOTFILES}/config/nvim/init.lua to $HOME/.config/nvim/init.lua"
+ln -sf "${DOTFILES}/config/nvim/colors/radix.vim" "$HOME/.config/nvim/colors/radix.vim"
+echo "[symlink] Linked ${DOTFILES}/config/nvim/colors/radix.vim to $HOME/.config/nvim/colors/radix.vim"
+ln -sf "${DOTFILES}/config/nvim/colors/active-theme.lua" "$HOME/.config/nvim/colors/active-theme.lua"
+echo "[symlink] Linked ${DOTFILES}/config/nvim/colors/active-theme.lua to $HOME/.config/nvim/colors/active-theme.lua"
+
+gen-vim-theme
+echo "[vim] Generated colorscheme from current theme"
+
+gen-ghostty-theme
+echo "[ghostty] Generated active-theme from current theme"
+
+gen-terminal-icon
+echo "[ghostty] Generated Ghostty.icns from current theme"
 
 # Reminder to store the LM Studio API key in the Keychain if it doesn't already exist
 if [ -z "$(security find-generic-password -a "$USER" -s "LM_STUDIO_API_KEY" -w 2>/dev/null)" ]; then

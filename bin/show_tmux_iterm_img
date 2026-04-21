@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+# The following is a hack to get chafa images working inside tmux
+# without having to resort to using --format=symbols
+
+image_width=20
+image_height=20
+
+parse_size() {
+    local flag_pattern='\b(--size|-s)[= ]?'
+    local size_arg
+
+    image_width=""
+    image_height=""
+
+    # 1. Find the argument (e.g., "--size 12x4" or "--size=12x4")
+    size_arg=$(printf "%s\n" "$@" | grep -oE -- "${flag_pattern}[^ ]+")
+
+    if [[ -n "$size_arg" ]]; then
+        local clean_arg="$size_arg"
+
+        # 2. Strip the flags
+        clean_arg="${clean_arg#--size}"
+        clean_arg="${clean_arg#-s}"
+
+        # 3. Strip the '=' and any whitespace
+        clean_arg="${clean_arg#=}"
+
+        # 4. THE FIX: Use xargs to trim ANY leading/trailing whitespace
+        # This turns " 12x4" or "12x4 " into just "12x4"
+        clean_arg=$(echo "$clean_arg" | xargs)
+
+        if [[ -n "$clean_arg" ]]; then
+            IFS='x' read -r width height <<< "$clean_arg"
+            [[ -n "$width" ]] && image_width="$width"
+            [[ -n "$height" ]] && image_height="$height"
+        fi
+    fi
+}
+
+parse_size "$@"
+
+
+# ls alone won't do it, it needs to be more complicated for some reason
+ls -lah > /dev/null
+
+# run chafa and redirect the output to a bin file for processing 
+chafa "$@" > /tmp/raw_img.bin
+
+# This _shouldn't_ be necessary because chafa has --passthrough=tmux
+# But for whatever reason, I'm having to do it with this hack 
+# (double-escape for tmux, and strip newlines for atomicity)
+perl -pe 's/\e/\e\e/g; s/\n//g' /tmp/raw_img.bin > /tmp/wrapped_img.bin
+
+# Disable echo so the terminal's 'receipt' is invisible
+stty -echo
+{
+  printf "\033Ptmux;"
+  cat /tmp/wrapped_img.bin
+  printf "\033\\"
+  # Report Cursor Position
+  printf "\033[6n"
+} > /dev/tty
+
+# wait for the terminal to confirm it rendered everything
+read -s -d "R" TEMP_VAR
+stty echo
+
+# Push the prompt down so it doesn't overlap the image
+for i in $(seq 1 $((height + 1))); do printf "\n"; done
+
+
+
+# ---- This also strategy also works
+# ls -lah
+# /opt/homebrew/bin/chafa --size 10x5 --format iterm "$1" > /tmp/raw_img.bin
+# perl -pe 's/\e/\e\e/g' /tmp/raw_img.bin > /tmp/wrapped_img.bin
+# printf "\033Ptmux;" 
+# cat /tmp/wrapped_img.bin
+# printf "\033\\"
+# ------

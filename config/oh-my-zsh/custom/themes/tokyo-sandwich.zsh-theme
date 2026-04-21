@@ -9,7 +9,7 @@
 autoload -U colors && colors
 
 # --- Powerline separator ---
-SEGMENT_SEPARATOR=$'\ue0b0'
+SEGMENT_SEPARATOR=$'\ue0b0' # 
 
 # --- Tokyo Sandwich color palette ---
 typeset -A TokyoSandwich

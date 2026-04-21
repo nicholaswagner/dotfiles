@@ -1,6 +1,0 @@
-[submodule "source-maps-downloader"]
-	path = submodules/source-maps-downloader
-	url = https://github.com/yunatamos/source-maps-downloader.git
-[submodule "submodules/source-maps-downloader"]
-	path = submodules/source-maps-downloader
-	url = https://github.com/yunatamos/source-maps-downloader.git

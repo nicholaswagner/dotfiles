@@ -1,0 +1,114 @@
+#!/bin/env zsh
+
+# Set the default user for the prompt
+DEFAULT_USER="$(whoami)"
+
+if [ -z "$DOTFILES" ]; then
+  export DOTFILES="${${(%):-%x}:A:h:h:h}"
+fi
+
+export PATH="$DOTFILES/bin:$PATH"
+
+# Preserve the launching terminal's identity across tmux, which rewrites
+# both $TERM (→ tmux-256color) and $TERM_PROGRAM (→ tmux). Set once when
+# outside tmux; child shells inside tmux inherit these from the parent.
+if [ -z "${TMUX:-}" ]; then
+  [ -z "${HOST_TERM:-}" ]         && export HOST_TERM="$TERM"
+  [ -z "${HOST_TERM_PROGRAM:-}" ] && export HOST_TERM_PROGRAM="$TERM_PROGRAM"
+fi
+
+# -- Theme Configuration ---
+set -a
+source "$DOTFILES/.env"
+set +a
+source "$DOTFILES/config/fzf-theme.sh"
+
+
+# Box Drawing vs Powerline PUA
+# ╱ \U2571 vs \UE0BB and \UE0BD
+# ╲ \U2572 vs \UE0B9 and \UE0BF
+# ◢ \U25E2 vs \UE0BA
+# ◣ \U25E3 vs \UE0B8
+# ◤ \U25E4 vs \UE0BC
+# ◥ \U25E5 vs \UE0BE
+
+# Miscellaneous Anglebrackets
+# CJK Symbols and Punctuation vs Powerline PUA
+# 〈 \U3008 vs \UE0B3
+# 〉 \U3009 vs \UE0B1
+
+# Miscellaneous Technical vs Powerline PUA
+# 〈 \U2329 vs \UE0B3
+# 〉 \U223A vs \UE0B1
+
+# Diongbats vs Powerline PUA
+# ❬ \U276C vs \UE0B3
+# ❭ \U276D vs \UE0B1
+# ❮ \U276E vs \UE0B3
+# ❯ \U276F vs \UE0B1
+# ❰ \U2770 vs \UE0B3
+# ❱ \U2771 vs \UE0B1
+
+# Geometric Shapes vs Powerline PUA
+# ◀ \U25C0 vs \UE0B2
+# ◄ \U25C4 vs \UE0B2
+# ▶ \U25B6 vs \UE0B0
+# ► \U25BA vs \UE0B0
+# ◖ \U25D6 vs \UE0B6
+# ◗ \U25D7 vs \UE0B4
+
+# 🭬 \U1FB6C LEFT TRIANGULAR ONE QUARTER BLOCK vs \UE0B2
+# 🭮 \U1FB6E RIGHT TRIANGULAR ONE QUARTER BLOCK vs \UE0B0
+# 🮤 \U1FBA4 BOX DRAWINGS LIGHT DIAGONAL UPPER CENTRE TO MIDDLE LEFT TO LOWER CENTRE vs \UE0B3
+# 🮥 \U1FBA5 BOX DRAWINGS LIGHT DIAGONAL UPPER CENTRE TO MIDDLE RIGHT TO LOWER CENTRE vs \UE0B1
+
+#         󱣱 ─ 󱣱 #. 󰾔 󰵈 󱣱   󱌫 ──  󰚌 󰎐  .     (chevron-right ) 󰇆    󰀶   ░▒▒░▒░▒ ▒ 
+export SEGMENT_SEPARATOR="░"
+export ZSH_THEME="active" # Set the default Oh My Zsh theme (can be overridden by individual terminal profiles)
+# export TERMINAL_ICON="󱣱"
+
+# Terminal Icon Configuration
+export TERMINAL_FONT_FAMILY="DankMono Nerd Font"
+export TERMINAL_ICON_CORNER_RADIUS="0.125"
+export TERMINAL_ICON_TEXT_COLOR="$THEME_ACCENT_11"
+export TERMINAL_ICON="󰵈"
+export TERMINAL_ICON_GLOSS_ALPHA="0.45"
+export TERMINAL_ICON_GLOSS_SIZE="0.97"
+export TERMINAL_ICON_SHEEN_ALPHA="1.0"
+
+
+# LM Studio environment variables
+export LM_CONFIG="${DOTFILES}/config/lm_models_config.json"
+export LM_ID="google/gemma-4-26b-a4b"
+export LM_CODER_ID="qwen/qwen3-coder-30b"
+export LM_STUDIO_API_BASE="http://localhost:1234/v1"
+
+# Set the default editor to Neovim
+export EDITOR="nvim"
+
+
+# -- API KEYS / TOKENS ---
+# The LM_STUDIO_API_KEY is stored securely in the macOS Keychain and accessed via the `security` command. 
+# Make sure to add your API key to the Keychain with the following command:
+# security add-generic-password -a "$USER" -s "LM_STUDIO_API_KEY" -w "your_api_key_here"
+export LM_STUDIO_API_KEY="$(security find-generic-password -a "$USER" -s "LM_STUDIO_API_KEY" -w 2>/dev/null)"
+export HUGGING_FACE_TOKEN="$(security find-generic-password -a "$USER" -s "HUGGING_FACE_TOKEN" -w 2>/dev/null)"
+
+# These are used by zsh-ai
+export ZSH_AI_PROVIDER="openai"
+export ZSH_AI_OPENAI_URL="${LM_STUDIO_API_BASE}/chat/completions"
+export ZSH_AI_OPENAI_MODEL="${LM_ID}"
+
+# OpenClaude configuration
+export CLAUDE_CODE_USE_OPENAI=1
+export OPENAI_BASE_URL="${LM_STUDIO_API_BASE}"
+export OPENAI_MODEL="${LM_ID}"    #qwen2.5-coder:7b
+export OPENAI_API_KEY="$LM_STUDIO_API_KEY"
+
+# xcode device name for iOS development
+export IPHONE_NAME="brick"
+
+# https://bun.com/docs 
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+

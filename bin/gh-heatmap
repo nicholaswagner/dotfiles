@@ -1,0 +1,323 @@
+#!/usr/bin/env python3
+
+"""
+Renders a GitHub contribution heatmap in the terminal.
+Usage: gh-heatmap [username] [--empty=COLOR] [--low=COLOR] ...
+  username   GitHub login (default: authenticated viewer)
+  Colors     hex strings, e.g. #26a641. All have sensible defaults.
+  --width N  cap output to N terminal columns (trims oldest weeks to fit)
+Fetches via `gh api graphql`, caches viewer data for 24h in ~/.cache/dotfiles/.
+Silent on any failure — never errors out.
+"""
+
+import argparse
+import datetime
+import json
+import os
+import subprocess
+import sys
+from threading import local
+import time
+
+CACHE_DIR = os.path.expanduser("~/.cache/dotfiles")
+CACHE_FILE = os.path.join(CACHE_DIR, "github-contributions.json")
+CACHE_TTL_SECONDS = 86400
+
+RESET = "\033[0m"
+
+# GitHub dark-mode contribution palette defaults
+DEFAULTS = {
+    "empty":    "#21262d",
+    "low":      "#0e4429",
+    "mid_low":  "#006d32",
+    "mid":      "#26a641",
+    "mid_high": "#39d353",
+    "max":      "#3dd68c",
+    "label":    "#848d97",
+    "month":    "#848d97",
+    "total":    "#6e7681",
+}
+
+GRAPHQL_QUERY_VIEWER = """
+{
+  viewer {
+    contributionsCollection {
+      contributionCalendar {
+        totalContributions
+        weeks {
+          contributionDays {
+            date
+            contributionCount
+          }
+        }
+      }
+    }
+  }
+}
+""".strip()
+
+GRAPHQL_QUERY_USER = """
+{
+  user(login: "%s") {
+    contributionsCollection {
+      contributionCalendar {
+        totalContributions
+        weeks {
+          contributionDays {
+            date
+            contributionCount
+          }
+        }
+      }
+    }
+  }
+}
+""".strip()
+
+MONTH_ABBREVS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def parse_args():
+    p = argparse.ArgumentParser(description="Render a GitHub contribution heatmap.")
+    p.add_argument("username", nargs="?", default=None)
+    p.add_argument("--empty",    default=DEFAULTS["empty"])
+    p.add_argument("--low",      default=DEFAULTS["low"])
+    p.add_argument("--mid-low",  default=DEFAULTS["mid_low"])
+    p.add_argument("--mid",      default=DEFAULTS["mid"])
+    p.add_argument("--mid-high", default=DEFAULTS["mid_high"])
+    p.add_argument("--max",      default=DEFAULTS["max"])
+    p.add_argument("--label",    default=DEFAULTS["label"])
+    p.add_argument("--month",    default=DEFAULTS["month"])
+    p.add_argument("--total",    default=DEFAULTS["total"])
+    p.add_argument("--months",   type=float, default=None,
+                   help="Show only the last N months (default: full year)")
+    p.add_argument("--width",    type=int, default=None,
+                   help="Maximum terminal columns; trims to the most recent weeks that fit")
+    p.add_argument("--sep",          default=" ",
+                   help="String inserted after each cell (default: one space)")
+    p.add_argument("--labels",       default="Mon,Wed,Fri",
+                   help="Comma-separated day labels for the 3 rows (default: Mon,Wed,Fri). "
+                        "Use 'none' to hide")
+    p.add_argument("--month-labels", default=None,
+                   help="Comma-separated month abbreviations, 12 values (default: Jan,Feb,...). "
+                        "Use 'none' to hide")
+    p.add_argument("--text",         default=None,
+                   help="Footer text below the graph. Defaults to ' contributions in the last year'. "
+                        "Pass any string to override, or 'none' to hide entirely")
+    args = p.parse_args()
+
+    # Parse day labels
+    if args.labels.lower() == "none":
+        day_labels = ["", "", ""]
+    else:
+        parts = [s.strip() for s in args.labels.split(",")]
+        day_labels = (parts + ["", ""])[:3]  # pad to 3 if fewer given
+
+    # Parse month labels
+    if args.month_labels is None:
+        month_labels = list(MONTH_ABBREVS)
+    elif args.month_labels.lower() == "none":
+        month_labels = None  # signals: don't render month row
+    else:
+        parts = [s.strip() for s in args.month_labels.split(",")]
+        month_labels = (parts + [""] * 12)[:12]  # pad to 12 if fewer given
+
+    footer_text = args.text
+
+    return args.username, args.months, args.width, day_labels, month_labels, footer_text, {
+        "empty":    args.empty,
+        "low":      args.low,
+        "mid_low":  args.mid_low,
+        "mid":      args.mid,
+        "mid_high": args.mid_high,
+        "max":      args.max,
+        "label":    args.label,
+        "month":    args.month,
+        "total":    args.total,
+        "sep":      args.sep,
+    }
+
+
+def hex_to_rgb(hex_color: str) -> tuple:
+    h = hex_color.lstrip("#")
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+def ansi_fg(r: int, g: int, b: int) -> str:
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def ansi_bg(r: int, g: int, b: int) -> str:
+    return f"\033[48;2;{r};{g};{b}m"
+
+
+def contribution_color(count: int, palette: dict) -> tuple:
+    if count == 0:      return hex_to_rgb(palette["empty"])
+    elif count <= 2:    return hex_to_rgb(palette["low"])
+    elif count <= 5:    return hex_to_rgb(palette["mid_low"])
+    elif count <= 14:   return hex_to_rgb(palette["mid"])
+    elif count <= 29:   return hex_to_rgb(palette["mid_high"])
+    else:               return hex_to_rgb(palette["max"])
+
+
+def load_cache() -> dict | None:
+    if not os.path.exists(CACHE_FILE):
+        return None
+    try:
+        with open(CACHE_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def save_cache(data: dict) -> None:
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(CACHE_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def fetch_contributions(username: str | None = None) -> dict | None:
+    try:
+        query = GRAPHQL_QUERY_USER % username if username else GRAPHQL_QUERY_VIEWER
+        result = subprocess.run(
+            ["gh", "api", "graphql", "-f", f"query={query}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return None
+        data = json.loads(result.stdout)
+        node = data["data"]["user" if username else "viewer"]
+        calendar = node["contributionsCollection"]["contributionCalendar"]
+        return {
+            "fetched_at": time.time(),
+            "total": calendar["totalContributions"],
+            "weeks": calendar["weeks"],
+        }
+    except Exception:
+        return None
+
+
+def fold_weekends(weeks: list) -> list:
+    """Roll Sun into same-week Mon. Returns Mon–Sat (new indices 0–5)."""
+    result = []
+    for week in weeks:
+        days = week.get("contributionDays", [])
+        counts = {d: 0 for d in range(7)}
+        dates = {}
+        for entry in days:
+            try:
+                dow = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].index(
+                    datetime.date.fromisoformat(entry["date"]).strftime("%a")
+                )
+            except Exception:
+                continue
+            counts[dow] = entry.get("contributionCount", 0)
+            dates[dow] = entry["date"]
+
+        counts[1] += counts[0]  # fold Sun into Mon
+
+        new_days = []
+        for dow in range(1, 7):  # Mon=1 … Sat=6 → new indices 0–5
+            new_days.append({"date": dates.get(dow, ""), "contributionCount": counts[dow]})
+        result.append({"contributionDays": new_days})
+    return result
+
+
+def render(weeks: list, total: int, palette: dict, day_labels: list, month_labels: list | None, footer_text: str | None = None) -> None:
+    weeks = fold_weekends(weeks)
+    n_weeks = len(weeks)
+    has_labels = any(day_labels)
+    prefix_width = 5 if has_labels else 0
+
+    cell_width = 1 + len(palette["sep"])
+
+    if month_labels is not None:
+        row_width = prefix_width + n_weeks * cell_width
+        month_chars = [" "] * row_width
+        prev_month = None
+        for wi, week in enumerate(weeks):
+            days = week.get("contributionDays", [])
+            if not days or not days[0].get("date"):
+                continue
+            month = int(days[0]["date"].split("-")[1]) - 1
+            if month != prev_month:
+                label = month_labels[month]
+                pos = prefix_width + wi * cell_width
+                for i, ch in enumerate(label):
+                    if pos + i < row_width:
+                        month_chars[pos + i] = ch
+                prev_month = month
+        print(ansi_fg(*hex_to_rgb(palette["month"])) + "".join(month_chars) + RESET)
+
+    # Half-block rows: (Mon, Tue), (Wed, Thu), (Fri, Sat) → 3 lines
+    day_pairs = [(0, 1, day_labels[0]), (2, 3, day_labels[1]), (4, 5, day_labels[2])]
+    label_color = ansi_fg(*hex_to_rgb(palette["label"]))
+
+    for top_idx, bot_idx, label in day_pairs:
+        row = (label_color + f" {label:<3} " + RESET) if has_labels else ""
+        for week in weeks:
+            days = week.get("contributionDays", [])
+            top_count = days[top_idx]["contributionCount"] if top_idx < len(days) else 0
+            bot_count = days[bot_idx]["contributionCount"] if bot_idx < len(days) else 0
+            row += (ansi_fg(*contribution_color(top_count, palette))
+                    + ansi_bg(*contribution_color(bot_count, palette))
+                    + "▀" + RESET + palette["sep"])
+        print(row)
+
+    if footer_text is None:
+        text = f"{total:,} contributions in the last year"
+    elif footer_text.lower() == "none":
+        text = None
+    else:
+        text = footer_text
+
+    if text is not None:
+        indent = " " * prefix_width
+        print(f"\n{ansi_fg(*hex_to_rgb(palette['total']))}{indent}{text}{RESET}\n")
+
+
+def main() -> None:
+    username, months, width, day_labels, month_labels, footer_text, palette = parse_args()
+
+    def trim(weeks):
+        w = weeks
+        if months is not None:
+            w = w[-max(1, round(months * 4.333)):]
+        if width is not None:
+            prefix_width = 5 if any(day_labels) else 0
+            cell_width = 1 + len(palette["sep"])
+            max_weeks = max(1, (width - prefix_width) // cell_width)
+            w = w[-max_weeks:]
+        return w
+
+    if username:
+        data = fetch_contributions(username)
+        if not data or not data.get("weeks"):
+            return
+        render(trim(data["weeks"]), data.get("total", 0), palette, day_labels, month_labels, footer_text)
+        return
+
+    cached = load_cache()
+    is_fresh = (
+        cached is not None
+        and time.time() - cached.get("fetched_at", 0) < CACHE_TTL_SECONDS
+    )
+
+    if not is_fresh:
+        fresh = fetch_contributions()
+        if fresh is not None:
+            save_cache(fresh)
+            cached = fresh
+
+    if not cached or not cached.get("weeks"):
+        return
+
+    render(trim(cached["weeks"]), cached.get("total", 0), palette, day_labels, month_labels,footer_text)
+
+
+if __name__ == "__main__":
+    main()
