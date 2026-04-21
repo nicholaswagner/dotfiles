@@ -252,3 +252,47 @@ function do-it-live(){
   nodemon --exec "$command"
   fi
 }
+
+# Storytime ------------------------------------
+# have Siri read your ClaudeCode session logs to you (and save the recordings)
+# //note:  jq -r --unbuffered '.message | select(.role == "assistant") | .content[] | select(.type == "text") | .text' | while read -r line; do echo "$line"; say "$line" 0 "$line".wav; done
+function cc-storytime(){
+  local input_path="$1"
+  local abs_input=$(realpath "$input_path")
+  local base_name=$(basename "$abs_input")
+  
+  local output_dir="$PWD/.claudio"
+  local log_prefix="${base_name:0:8}"
+  local log_file="${output_dir}/${log_prefix}.log"
+  
+  local i=0 
+  
+  mkdir -p "$output_dir"
+  touch "$log_file"
+  echo "[ info ] Logging to: $log_file"
+
+  # -n +1 for starting at line 1 and go forward from there
+  # -n 1 shows the very last line of the log and goes forward from there aka "hot" log
+
+  stdbuf -oL tail -n 1 -f "$abs_input" | stdbuf -oL jq -r --unbuffered '
+    .message | select(.role == "assistant") | .content[] | select(.type == "text") | .text
+  ' | while read -r line; do
+    # Skip if line is empty or only whitespace
+    if [[ -n "${line// /}" ]]; then
+        ((i++))
+        local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+        local out_file="${output_dir}/${timestamp}_${i}.aiff"
+
+        # Log to file
+        printf "\n[%s] %s\n%s\n" "$timestamp" "$out_file" "$line" >> "$log_file"
+
+        # Output to terminal
+        echo "---"
+        echo "$line"
+
+        # Audio
+        say -- "$line"
+        say -o "$out_file" -- "$line"
+    fi
+  done
+}

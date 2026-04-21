@@ -15,20 +15,20 @@ echo "[setup] Starting setup with DOTFILES=${DOTFILES}"
 source "${DOTFILES}/.zshenv"
 
 # Initialize git submodules
-echo "[git] Initializing submodules..."
+# echo "[git] Initializing submodules..."
 
 # downloads source-maps when websites include them, which is super helpful for debugging in the browser
 echo "[git] Initializing source-maps-downloader submodule..."
 git -C "${DOTFILES}" submodule update --init submodules/source-maps-downloader
 
-echo "[git] Configuring nerd-fonts sparse checkout..."
-git -C "${DOTFILES}" submodule update --init submodules/nerd-fonts
-git -C "${DOTFILES}/submodules/nerd-fonts" sparse-checkout set \
-  font-patcher \
-  src/glyphs \
-  bin/scripts/name_parser \
-  bin/scripts/braille
-git -C "${DOTFILES}" submodule update submodules/nerd-fonts
+# echo "[git] Configuring nerd-fonts sparse checkout..."
+# git -C "${DOTFILES}" submodule update --init submodules/nerd-fonts
+# git -C "${DOTFILES}/submodules/nerd-fonts" sparse-checkout set \
+#   font-patcher \
+#   src/glyphs \
+#   bin/scripts/name_parser \
+#   bin/scripts/braille
+# git -C "${DOTFILES}" submodule update submodules/nerd-fonts
 
 # https://ohmyz.sh/#install
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
@@ -150,6 +150,9 @@ echo "[ghostty] Generated active-theme from current theme"
 
 gen-terminal-icon
 echo "[ghostty] Generated Ghostty.icns from current theme"
+
+# Install Nodemon globally
+npm install -g nodemon
 
 # Reminder to store the LM Studio API key in the Keychain if it doesn't already exist
 if [ -z "$(security find-generic-password -a "$USER" -s "LM_STUDIO_API_KEY" -w 2>/dev/null)" ]; then
