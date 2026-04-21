@@ -6,3 +6,4 @@
 videoStuff
 bin/html2md*
 __pycache__
+.*
