@@ -14,12 +14,26 @@ echo "[setup] Starting setup with DOTFILES=${DOTFILES}"
 # shellcheck source=/dev/null
 source "${DOTFILES}/.zshenv"
 
-# Initialize git submodules
-# echo "[git] Initializing submodules..."
+mkdir -p ~/.local/bin
 
-# downloads source-maps when websites include them, which is super helpful for debugging in the browser
+# Initialize git submodules
+echo "[git] Initializing submodules..."
+
+
+
+# downloads source-maps when websites include them (its a great learning tool)
 echo "[git] Initializing source-maps-downloader submodule..."
 git -C "${DOTFILES}" submodule update --init submodules/source-maps-downloader
+git config -f .gitmodules submodule.submodules/source-maps-downloader.ignore all
+
+# ghostty theme previewer script
+echo "[git]	Adding submodule - ghostty-themes
+git submodule add https://github.com/flyerAI2025/ghostty-themes.git submodules/ghostty-themes
+git config -f .gitmodules submodule.submodules/ghostty-themes.ignore all
+chmod +x submodules/ghostty-themes/ghostty-themes
+ln -sf "${DOTFILES}/submodules/ghostty-themes/ghostty-themes" ~/.local/bin/ghostty-themes
+ 
+
 
 # echo "[git] Configuring nerd-fonts sparse checkout..."
 # git -C "${DOTFILES}" submodule update --init submodules/nerd-fonts
@@ -109,17 +123,33 @@ ln -sf "${DOTFILES}/config/tmux/tmux.conf" "$HOME/.tmux.conf"
 echo "[symlink] Linked ${DOTFILES}/config/tmux/tmux.conf to $HOME/.tmux.conf"
 
 # Symlink ghostty config
-mkdir -p "$HOME/.config/ghostty"
-if [ -f "$HOME/.config/ghostty/config" ] && [ ! -L "$HOME/.config/ghostty/config" ]; then
-	echo "[backup] Backing up existing ghostty config"
-	mv "$HOME/.config/ghostty/config" "$HOME/.config/ghostty/config.bak"
+# Ghostty on macOS reads from ~/Library/Application Support/com.mitchellh.ghostty/config
+# in preference to ~/.config/ghostty/config, so we symlink the Application Support path.
+mkdir -p "$HOME/Library/Application Support/com.mitchellh.ghostty"
+GHOSTTY_APPSUP_CONFIG="$HOME/Library/Application Support/com.mitchellh.ghostty/config"
+if [ -f "$GHOSTTY_APPSUP_CONFIG" ] && [ ! -L "$GHOSTTY_APPSUP_CONFIG" ]; then
+	echo "[backup] Backing up existing ghostty Application Support config"
+	mv "$GHOSTTY_APPSUP_CONFIG" "${GHOSTTY_APPSUP_CONFIG}.bak"
 fi
-ln -sf "${DOTFILES}/config/ghostty/ghostty.conf" "$HOME/.config/ghostty/config"
-echo "[symlink] Linked ${DOTFILES}/config/ghostty/ghostty.conf to $HOME/.config/ghostty/config"
-ln -sf "${DOTFILES}/config/ghostty/tokyo-night" "$HOME/.config/ghostty/tokyo-night"
-echo "[symlink] Linked ${DOTFILES}/config/ghostty/tokyo-night to $HOME/.config/ghostty/tokyo-night"
-ln -sf "${DOTFILES}/config/ghostty/active-theme" "$HOME/.config/ghostty/active-theme"
-echo "[symlink] Linked ${DOTFILES}/config/ghostty/active-theme to $HOME/.config/ghostty/active-theme"
+ln -sf "${DOTFILES}/config/ghostty/ghostty.conf" "$GHOSTTY_APPSUP_CONFIG"
+echo "[symlink] Linked ${DOTFILES}/config/ghostty/ghostty.conf to $GHOSTTY_APPSUP_CONFIG"
+
+# NOTE: The ~/.config/ghostty/config symlink below is ignored by Ghostty on macOS
+# (Application Support takes precedence). Left commented in case of future need on Linux
+# or if Ghostty's config precedence changes.
+# mkdir -p "$HOME/.config/ghostty"
+# if [ -f "$HOME/.config/ghostty/config" ] && [ ! -L "$HOME/.config/ghostty/config" ]; then
+# 	echo "[backup] Backing up existing ghostty config"
+# 	mv "$HOME/.config/ghostty/config" "$HOME/.config/ghostty/config.bak"
+# fi
+# ln -sf "${DOTFILES}/config/ghostty/ghostty.conf" "$HOME/.config/ghostty/config"
+# echo "[symlink] Linked ${DOTFILES}/config/ghostty/ghostty.conf to $HOME/.config/ghostty/config"
+
+# Symlink the generated active-theme into Ghostty's themes/ lookup directory.
+# Ghostty resolves `theme = active-theme` to <config-dir>/themes/active-theme.
+mkdir -p "$HOME/.config/ghostty/themes"
+ln -sf "${DOTFILES}/config/ghostty/active-theme" "$HOME/.config/ghostty/themes/active-theme"
+echo "[symlink] Linked ${DOTFILES}/config/ghostty/active-theme to $HOME/.config/ghostty/themes/active-theme"
 
 # Symlink .gitconfig
 if [ -f "$HOME/.gitconfig" ] && [ ! -L "$HOME/.gitconfig" ]; then

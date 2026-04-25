@@ -1,5 +1,18 @@
 [
   {
+    "google/gemma-4-e2b":{
+      "tts": {
+          "context_length": 8192,
+          "temperature": 1,
+          "top_p": 0.95,
+          "repeat_penalty": 1.15,
+          "top_k": 64,
+          "n_gpu_layers": -1,
+          "n_threads": 12
+        }
+    }
+  },
+  {
     "google/gemma-4-26b-a4b": {
       "fast": {
         "context_length": 8192,
@@ -11,11 +24,12 @@
       },
       "balanced": {
         "context_length": 32768,
-        "temperature": 0.5,
-        "top_p": 0.92,
-        "repeat_penalty": 1.1,
+        "temperature": 0.35,
+        "top_p": 0.95,
+        "repeat_penalty": 1.08,
+        "top_k": 100,
         "n_gpu_layers": -1,
-        "n_threads": 12
+        "n_threads": 14
       },
       "quality": {
         "context_length": 65536,

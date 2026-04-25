@@ -1,6 +1,6 @@
 # ~/dotfiles
 
-![A screenshot of a terminal with a custom theme](assets/screenshot.png)
+![A screenshot of a terminal with a custom theme](assets/tokyosandwich.png)
 
 My personal dotfiles collection for macOS (Apple Silicon).  
 I've had Claude make an effort to summerize what's going on in here, but YMMV.
@@ -150,26 +150,5 @@ Models: general (`google/gemma-4-26b-a4b`) and coder (`qwen/qwen3-coder-30b`). E
 ## Structure
 
 ```text
-dotfiles/
-├── assets/              # avatar, screenshot, terminal icon source
-├── bin/                  # scripts on $PATH (theme generators, motd, etc.)
-├── config/
-│   ├── darkcolors.py    # Radix color scale data (25 accent + 6 grey)
-│   ├── fzf-theme.sh     # fzf color config from THEME_* vars
-│   ├── ghostty/         # Ghostty terminal config + generated theme
-│   ├── gitconfig        # git user, credential helper, color config
-│   ├── lm_models_config.json
-│   ├── nvim/            # init.lua + generated colorschemes
-│   ├── oh-my-zsh/custom/  # themes (active, tau-ceti, tokyo-sandwich) + plugins (zsh-ai)
-│   ├── tmux/            # tmux.conf + status bar script
-│   └── zsh/             # zshenv, zprofile, zshrc, aliases, functions
-├── notes/               # design notes (theme system, vim theme, etc)
-├── src/
-│   └── ClipURL.swift    # clip:// URL scheme handler
-├── submodules/
-│   ├── nerd-fonts       # font patcher (sparse checkout)
-│   └── source-maps-downloader
-├── .env                 # generated theme vars (not committed)
-├── Brewfile             # Homebrew dependencies
-└── setup.sh             # bootstrap script
+
 ```

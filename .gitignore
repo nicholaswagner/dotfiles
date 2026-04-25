@@ -1,9 +1,10 @@
 .DS_Store
 .oh-my-zsh/custom/plugins/zsh-ai
 *.otf
-.config
 .bak
-videoStuff
-bin/html2md*
 __pycache__
 .*
+!.gitignore
+DankMonoNerdFont-Italic.otf
+DankMonoNerdFont-Regular.otf
+submodules

@@ -17,55 +17,21 @@ if [ -z "${TMUX:-}" ]; then
   [ -z "${HOST_TERM_PROGRAM:-}" ] && export HOST_TERM_PROGRAM="$TERM_PROGRAM"
 fi
 
-# -- Theme Configuration ---
+
+# -- Loading a specific theme for now --
 set -a
-source "$DOTFILES/.env"
+source "${HOME}/Repos/dev.nicholaswagner/terminal-colors/themes/.env-gold-dark"
+
+# -- Loads a random theme ---
+# themes=(${HOME}/Repos/dev.nicholaswagner/terminal-colors/themes/*dark(ND.))
+# (( $#themes )) && source ${themes[$((RANDOM % $#themes + 1))]}
+
+
 set +a
 source "$DOTFILES/config/fzf-theme.sh"
 
-
-# Box Drawing vs Powerline PUA
-# ╱ \U2571 vs \UE0BB and \UE0BD
-# ╲ \U2572 vs \UE0B9 and \UE0BF
-# ◢ \U25E2 vs \UE0BA
-# ◣ \U25E3 vs \UE0B8
-# ◤ \U25E4 vs \UE0BC
-# ◥ \U25E5 vs \UE0BE
-
-# Miscellaneous Anglebrackets
-# CJK Symbols and Punctuation vs Powerline PUA
-# 〈 \U3008 vs \UE0B3
-# 〉 \U3009 vs \UE0B1
-
-# Miscellaneous Technical vs Powerline PUA
-# 〈 \U2329 vs \UE0B3
-# 〉 \U223A vs \UE0B1
-
-# Diongbats vs Powerline PUA
-# ❬ \U276C vs \UE0B3
-# ❭ \U276D vs \UE0B1
-# ❮ \U276E vs \UE0B3
-# ❯ \U276F vs \UE0B1
-# ❰ \U2770 vs \UE0B3
-# ❱ \U2771 vs \UE0B1
-
-# Geometric Shapes vs Powerline PUA
-# ◀ \U25C0 vs \UE0B2
-# ◄ \U25C4 vs \UE0B2
-# ▶ \U25B6 vs \UE0B0
-# ► \U25BA vs \UE0B0
-# ◖ \U25D6 vs \UE0B6
-# ◗ \U25D7 vs \UE0B4
-
-# 🭬 \U1FB6C LEFT TRIANGULAR ONE QUARTER BLOCK vs \UE0B2
-# 🭮 \U1FB6E RIGHT TRIANGULAR ONE QUARTER BLOCK vs \UE0B0
-# 🮤 \U1FBA4 BOX DRAWINGS LIGHT DIAGONAL UPPER CENTRE TO MIDDLE LEFT TO LOWER CENTRE vs \UE0B3
-# 🮥 \U1FBA5 BOX DRAWINGS LIGHT DIAGONAL UPPER CENTRE TO MIDDLE RIGHT TO LOWER CENTRE vs \UE0B1
-
-#         󱣱 ─ 󱣱 #. 󰾔 󰵈 󱣱   󱌫 ──  󰚌 󰎐  .     (chevron-right ) 󰇆    󰀶   ░▒▒░▒░▒ ▒ 
-export SEGMENT_SEPARATOR="░"
+export SEGMENT_SEPARATOR="" # Powerline-style segment separator
 export ZSH_THEME="active" # Set the default Oh My Zsh theme (can be overridden by individual terminal profiles)
-# export TERMINAL_ICON="󱣱"
 
 # Terminal Icon Configuration
 export TERMINAL_FONT_FAMILY="DankMono Nerd Font"
@@ -80,17 +46,17 @@ export TERMINAL_ICON_SHEEN_ALPHA="1.0"
 # LM Studio environment variables
 export LM_CONFIG="${DOTFILES}/config/lm_models_config.json"
 export LM_ID="google/gemma-4-26b-a4b"
-export LM_CODER_ID="qwen/qwen3-coder-30b"
 export LM_STUDIO_API_BASE="http://localhost:1234/v1"
+
 
 # Set the default editor to Neovim
 export EDITOR="nvim"
-
 
 # -- API KEYS / TOKENS ---
 # The LM_STUDIO_API_KEY is stored securely in the macOS Keychain and accessed via the `security` command. 
 # Make sure to add your API key to the Keychain with the following command:
 # security add-generic-password -a "$USER" -s "LM_STUDIO_API_KEY" -w "your_api_key_here"
+
 export LM_STUDIO_API_KEY="$(security find-generic-password -a "$USER" -s "LM_STUDIO_API_KEY" -w 2>/dev/null)"
 export HUGGING_FACE_TOKEN="$(security find-generic-password -a "$USER" -s "HUGGING_FACE_TOKEN" -w 2>/dev/null)"
 
@@ -99,16 +65,46 @@ export ZSH_AI_PROVIDER="openai"
 export ZSH_AI_OPENAI_URL="${LM_STUDIO_API_BASE}/chat/completions"
 export ZSH_AI_OPENAI_MODEL="${LM_ID}"
 
-# OpenClaude configuration
-export CLAUDE_CODE_USE_OPENAI=1
+# OPENAI Config
 export OPENAI_BASE_URL="${LM_STUDIO_API_BASE}"
-export OPENAI_MODEL="${LM_ID}"    #qwen2.5-coder:7b
+export OPENAI_MODEL="${LM_ID}"
 export OPENAI_API_KEY="$LM_STUDIO_API_KEY"
+
+# Claude Code statusline budgets ---- Dont bother though, this isn't working ATM
+# — used by ~/.claude/statusline.sh to render
+# session/weekly % readouts. Anthropic doesn't publish exact plan quotas, so
+# tune these against what `/usage` shows in Claude Code at peak use. Unset
+# values fall back to absolute token counts (e.g. "session 12.4M").
+export CLAUDE_SESSION_BUDGET_TOKENS=6600000
+export CLAUDE_WEEKLY_BUDGET_TOKENS=91000000
 
 # xcode device name for iOS development
 export IPHONE_NAME="brick"
 
-# https://bun.com/docs 
+# https://bun.com/docs
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Eagerly add the active nvm node bin to PATH so non-interactive shells
+# (launchd, cron, GUI-launched processes) can resolve node and globally
+# installed npm CLIs without sourcing nvm.sh. Follows the "default" alias
+# chain (e.g. default → lts/* → lts/krypton → v24.14.0), falling back to
+# the newest installed version if resolution fails.
+if [ -d "$HOME/.nvm/versions/node" ]; then
+  _nvm_target="default"
+  _nvm_hops=0
+  while [ -f "$HOME/.nvm/alias/$_nvm_target" ] && [ "$_nvm_hops" -lt 8 ]; do
+    _nvm_target="$(cat "$HOME/.nvm/alias/$_nvm_target")"
+    _nvm_hops=$((_nvm_hops + 1))
+  done
+  case "$_nvm_target" in
+    v*) _nvm_version="$_nvm_target" ;;
+    *)  _nvm_version="" ;;
+  esac
+  if [ -z "$_nvm_version" ] || [ ! -d "$HOME/.nvm/versions/node/$_nvm_version/bin" ]; then
+    _nvm_version="$(ls -1 "$HOME/.nvm/versions/node" 2>/dev/null | sort -V | tail -1)"
+  fi
+  [ -n "$_nvm_version" ] && export PATH="$HOME/.nvm/versions/node/$_nvm_version/bin:$PATH"
+  unset _nvm_target _nvm_hops _nvm_version
+fi
 

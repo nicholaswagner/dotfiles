@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This script builds a ClipURL.app which allows you to copy text to the clipboard via a custom URL scheme (clip://).
+
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="$HOME/Applications/ClipURL.app"
 CONTENTS="$APP/Contents"
@@ -16,7 +18,7 @@ cat > "$CONTENTS/Info.plist" << 'PLIST'
     <key>CFBundleName</key>
     <string>ClipURL</string>
     <key>CFBundleIdentifier</key>
-    <string>com.nicholaswagner.clipurl</string>
+    <string>dev.nicholaswagner.clipurl</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleExecutable</key>

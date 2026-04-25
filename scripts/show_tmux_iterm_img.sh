@@ -40,7 +40,6 @@ parse_size() {
 
 parse_size "$@"
 
-
 # ls alone won't do it, it needs to be more complicated for some reason
 ls -lah > /dev/null
 
@@ -68,14 +67,3 @@ stty echo
 
 # Push the prompt down so it doesn't overlap the image
 for i in $(seq 1 $((height + 1))); do printf "\n"; done
-
-
-
-# ---- This also strategy also works
-# ls -lah
-# /opt/homebrew/bin/chafa --size 10x5 --format iterm "$1" > /tmp/raw_img.bin
-# perl -pe 's/\e/\e\e/g' /tmp/raw_img.bin > /tmp/wrapped_img.bin
-# printf "\033Ptmux;" 
-# cat /tmp/wrapped_img.bin
-# printf "\033\\"
-# ------

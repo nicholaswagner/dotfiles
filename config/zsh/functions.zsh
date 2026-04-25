@@ -72,30 +72,6 @@ xcode_run() {
   echo "🚀 Launching $bundle_id..."
   xcrun devicectl device process launch --device "$device_id" "$bundle_id"
 }
-
-
-# .git/safe ----------------------------------
-# Gitsafe strategy for executing scripts located in repo/bin directories https://thoughtbot.com/blog/git-safe
-add_git_safe_path() {
-  local dir
-  local candidate
-  dir="$PWD"
-
-  while [ "$dir" != "/" ]; do
-    candidate="$dir/.git/safe/../../bin"
-
-    if [ -d "$candidate" ]; then
-      case ":$PATH:" in
-        *":$candidate:"*) ;;
-        *) export PATH="$candidate:$PATH" ;;
-      esac
-      return
-    fi
-
-    dir=$(dirname "$dir")
-  done
-}
-
 # LM Studio Aliases -------------------------------------
 
 # Loads a model based on the profile name (fast, balanced, quality) defined in the LM_CONFIG JSON file
@@ -110,23 +86,6 @@ lms_load() {
   ctx=$(jq -r ".[0][keys[0]].${profile}.context_length" "$LM_CONFIG")
   ttl=$(( profile == "quality" ? 3600 : profile == "balanced" ? 1800 : 900 ))
   lms load "$id" --gpu max -c "$ctx" --identifier "lm-${profile}" --ttl "$ttl" -y
-}
-
-
-# Display Banner ----------------------------------
-display_banner() {
-  clear
-  local file="${DOTFILES}/assets/me.ans"
-  local bg=$'\e[48;2;192;202;245m'  # matches first row of me.ans
-  local reset=$'\e[0m'
-
-  while IFS= read -r line; do
-    # Strip ANSI codes to measure visible length
-    local visible=$(printf "%s" "$line" | sed 's/\x1b\[[0-9;:]*[a-zA-Z]//g; s/\x1b][^\x07]*\x07//g; s/\x1b.//g')
-    local pad=$(( COLUMNS - ${#visible} ))
-    (( pad < 0 )) && pad=0
-    printf "%s%s%${pad}s%s\n" "$line" "$bg" "" "$reset"
-  done < "$file"
 }
 
 # ffmpeg color remapping ----------------------------------
@@ -198,7 +157,51 @@ ansi_audit() {
     echo -e "\n-----------------------------"
 }
 
+
+
+
+# Terminal Color Utilities ------------------------
+
+function supports_color() {
+    [[ -t 1 && -z "${NO_COLOR:-}" ]]
+}
+# Converts #RRGGBB to decimal R, G, B components
+function hex_to_decimal() {
+    local hex=${1#\#}
+    printf '%s\n' "$((16#${hex:0:2})) $((16#${hex:2:2})) $((16#${hex:4:2}))"
+}
+function style_codes() {
+    local codes=""
+    for arg in "$@"; do
+        if [[ $arg == \#* ]]; then
+            codes+="38;2;$(hex_to_decimal "$arg" | awk '{print $1";"$2";"$3}');"
+        elif [[ $arg == bg:\#* ]]; then
+            codes+="48;2;$(hex_to_decimal "${arg#bg:}" | awk '{print $1";"$2";"$3}');"
+        elif [[ -n "${ANSI_STYLES[$arg]:-}" ]]; then
+            codes+="${ANSI_STYLES[$arg]};"
+        fi
+    done
+    printf '%s' "${codes%;}"
+}
+function txt() {
+    local text="$1"; shift
+    local codes
+    codes="$(style_codes "$@")"
+
+    if [[ -z "$codes" ]] || ! supports_color; then
+        printf '%b\n' "$text"
+    else
+        printf '\033[%sm%b\033[0m\n' "$codes" "$text"
+    fi
+}
+
+
+
+
+
+
 # Get a page's HTML and convert to markdown using html-to-markdown CLI tool
+# https://docs.html-to-markdown.kreuzberg.dev/guides/basic-conversion/
 # Usage: get-page-markdown <URL> --full --extras --with-images
 get-page-markdown() {
 
@@ -253,9 +256,22 @@ function do-it-live(){
   fi
 }
 
+# Terminal Links ------------------------------
+
+function md_to_terminal_links() {
+  local input="$1"
+  # Regular Expression breakdown:
+  # 1. \[([^]]+)\] -> Matches [label] and captures 'label' in group 1
+  # 2. \(([^)]+)\) -> Matches (url) and captures 'url' in group 2
+  # 3. The replacement uses the OSC 8 sequence with the captured groups
+  
+  echo "$input" | sed -E $'s|\\[([^]]+)\\]\\(([^)]+)\\)|\e]8;;\\2\e\\\\\\1\e]8;;\e\\\\|g'
+}
+
+
+
 # Storytime ------------------------------------
-# have Siri read your ClaudeCode session logs to you (and save the recordings)
-# //note:  jq -r --unbuffered '.message | select(.role == "assistant") | .content[] | select(.type == "text") | .text' | while read -r line; do echo "$line"; say "$line" 0 "$line".wav; done
+# have Siri read your ClaudeCode session assistant responses
 function cc-storytime(){
   local input_path="$1"
   local abs_input=$(realpath "$input_path")
@@ -264,35 +280,45 @@ function cc-storytime(){
   local output_dir="$PWD/.claudio"
   local log_prefix="${base_name:0:8}"
   local log_file="${output_dir}/${log_prefix}.log"
-  
-  local i=0 
-  
-  mkdir -p "$output_dir"
-  touch "$log_file"
-  echo "[ info ] Logging to: $log_file"
 
-  # -n +1 for starting at line 1 and go forward from there
-  # -n 1 shows the very last line of the log and goes forward from there aka "hot" log
+  local dir="/Users/bricksandwich/Repos/gemma-agent"
+  # npx tsx examples/humanize-words.ts  
+  local i=0 
+  mkdir -p "$output_dir"
+  echo "[ info ] Logging to: $log_file"
 
   stdbuf -oL tail -n 1 -f "$abs_input" | stdbuf -oL jq -r --unbuffered '
     .message | select(.role == "assistant") | .content[] | select(.type == "text") | .text
   ' | while read -r line; do
-    # Skip if line is empty or only whitespace
-    if [[ -n "${line// /}" ]]; then
+   if [[ -n "${line// /}" ]]; then
         ((i++))
-        local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+        local timestamp=$(date "+%Y%m%d%H%M%S")
         local out_file="${output_dir}/${timestamp}_${i}.aiff"
+        local abs_out_file=$(realpath -q "$out_file")
+        local speech="$(echo "$line"| sed 's/[^a-zA-Z0-9 .,!?]//g')"
 
-        # Log to file
-        printf "\n[%s] %s\n%s\n" "$timestamp" "$out_file" "$line" >> "$log_file"
-
+        { echo ""; echo "[${timestamp}](${out_file})"; echo "${speech}";} >> "$log_file"        
+        
         # Output to terminal
         echo "---"
-        echo "$line"
-
-        # Audio
-        say -- "$line"
-        say -o "$out_file" -- "$line"
+        # echo "$line" | npx tsx /Users/bricksandwich/repos/gemma-agent/examples/humanize-words.ts # sends the text through a local ai agent that humanizes it
+        say -r 180 --interactive -- "$speech"
+        # say -r 180 -- "$line"
+        # say -o "$out_file" -- "$line"
     fi
   done
+}
+
+
+# Ghostty HTML Export Script
+ghostty-html() {
+  local file
+  read -r file   # read pasted path from stdin
+  if [[ ! -f "$file" ]]; then
+    echo "No valid file received"
+    return 1
+  fi
+  local html="${file}.html"
+  aha --black --title "Ghostty Scrollback" < "$file" > "$html"
+  open "$html"
 }

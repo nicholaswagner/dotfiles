@@ -20,10 +20,6 @@ alias brewfile="brew bundle --file=\${DOTFILES}/Brewfile"
 
 # CLI Tools -------------------------------------
 alias readme="glow ./README.md"
-
-# https://docs.html-to-markdown.kreuzberg.dev/guides/basic-conversion/
-
-
 alias source-maps="node \${DOTFILES}/submodules/source-maps-downloader/index.js"
 
 # Navigation -------------------------------------
@@ -31,4 +27,8 @@ alias dotfiles="cd \${DOTFILES}"
 alias repos="cd ~/repos"
 alias nw="cd ~/repos/dev.nicholaswagner"
 alias vault='\${HOME}/Library/Mobile\ Documents/iCloud~md~obsidian/Documents'
+
+# web reference pages
 alias tmux-cheatsheet='open -a Google\ Chrome https://tmuxcheatsheet.com'
+
+alias ghhtml='ghostty-html <<< "$(pbpaste)"'
