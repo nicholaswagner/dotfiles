@@ -34,3 +34,4 @@ brew "yt-dlp"
 cask "ghostty"
 brew "python"
 brew "fswatch"
+brew ripgrep
