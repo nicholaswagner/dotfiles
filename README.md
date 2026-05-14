@@ -54,26 +54,6 @@ cd dotfiles && ./setup.sh
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder with themed colors and image previews |
 | [chafa](https://hpjansson.org/chafa/) | Terminal image rendering (used by `motd.sh` and `fzf-preview.sh`) |
 
-## Theme system
-
-Pipeline: **`THEME_*` env vars → generator scripts → output files.** Built on [Radix UI color scales](https://www.radix-ui.com/colors) — 25 accent scales, 6 grey scales, semantic pools for error/warning/success/info, and natural grey pairings. Each scale has 12 steps with defined roles (backgrounds, borders, solids, text).
-
-Where the `THEME_*` vars come from is in flux. `config/zsh/zshenv` currently sources a theme file from an external `~/Repos/dev.nicholaswagner/terminal-colors/themes/` repo. The local root `.env` is still a valid source — `scripts/build-theme.py` writes to it — but it isn't what the live shell loads today.
-
-```bash
-python3 scripts/build-theme.py                       # fully random palette → .env
-python3 scripts/build-theme.py --accent violet       # lock accent, randomize the rest
-python3 scripts/build-theme.py --accent '#8e4ec6'    # custom hex with generated 12-step scale
-python3 scripts/build-theme.py --stdout              # print to stdout instead of writing .env
-
-# After build-theme, regenerate downstream configs:
-python3 scripts/gen-vim-theme.py                     # config/nvim/colors/radix.vim + active-theme.lua
-python3 scripts/build-ghostty-theme.py               # config/ghostty/active-theme
-uv run scripts/gen-terminal-icon.py                  # ~/.config/ghostty/Ghostty.icns
-```
-
-Reload the shell to pick up new vars.
-
 ## Shell config
 
 All shell files live in `config/zsh/` and are symlinked to `~` by `setup.sh`.
