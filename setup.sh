@@ -12,7 +12,7 @@ DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "[setup] Starting setup with DOTFILES=${DOTFILES}"
 
 # shellcheck source=/dev/null
-source "${DOTFILES}/.zshenv"
+source "${DOTFILES}/config/zsh/zshenv"
 
 mkdir -p ~/.local/bin
 
@@ -27,12 +27,12 @@ git -C "${DOTFILES}" submodule update --init submodules/source-maps-downloader
 git config -f .gitmodules submodule.submodules/source-maps-downloader.ignore all
 
 # ghostty theme previewer script
-echo "[git]	Adding submodule - ghostty-themes
-git submodule add https://github.com/flyerAI2025/ghostty-themes.git submodules/ghostty-themes
+echo "[git] Initializing ghostty-themes submodule..."
+git -C "${DOTFILES}" submodule update --init submodules/ghostty-themes
 git config -f .gitmodules submodule.submodules/ghostty-themes.ignore all
 chmod +x submodules/ghostty-themes/ghostty-themes
 ln -sf "${DOTFILES}/submodules/ghostty-themes/ghostty-themes" ~/.local/bin/ghostty-themes
- 
+
 
 
 # echo "[git] Configuring nerd-fonts sparse checkout..."
@@ -172,13 +172,13 @@ echo "[symlink] Linked ${DOTFILES}/config/nvim/colors/radix.vim to $HOME/.config
 ln -sf "${DOTFILES}/config/nvim/colors/active-theme.lua" "$HOME/.config/nvim/colors/active-theme.lua"
 echo "[symlink] Linked ${DOTFILES}/config/nvim/colors/active-theme.lua to $HOME/.config/nvim/colors/active-theme.lua"
 
-gen-vim-theme
+python3 "${DOTFILES}/scripts/gen-vim-theme.py"
 echo "[vim] Generated colorscheme from current theme"
 
-gen-ghostty-theme
+python3 "${DOTFILES}/scripts/build-ghostty-theme.py"
 echo "[ghostty] Generated active-theme from current theme"
 
-gen-terminal-icon
+uv run "${DOTFILES}/scripts/gen-terminal-icon.py"
 echo "[ghostty] Generated Ghostty.icns from current theme"
 
 # Install Nodemon globally

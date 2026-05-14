@@ -7,8 +7,6 @@ if [ -z "$DOTFILES" ]; then
   export DOTFILES="${${(%):-%x}:A:h:h:h}"
 fi
 
-export PATH="$DOTFILES/bin:$PATH"
-
 # Preserve the launching terminal's identity across tmux, which rewrites
 # both $TERM (→ tmux-256color) and $TERM_PROGRAM (→ tmux). Set once when
 # outside tmux; child shells inside tmux inherit these from the parent.

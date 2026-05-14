@@ -12,7 +12,6 @@ zstyle ':omz:plugins:nvm' silent-autoload yes
 source $ZSH/oh-my-zsh.sh
 source "$DOTFILES/config/zsh/aliases.zsh"
 source "$DOTFILES/config/zsh/functions.zsh"
-source "$DOTFILES/config/zsh/utils.zsh"
 
 
 # uv
